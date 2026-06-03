@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>合同智能审查系统 - 风险点库管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Toast 通知容器 -->
+  <div id="toast-container"></div>
+
+  <!-- 模态弹窗容器 -->
+  <div id="modal-container"></div>
+
+  <!-- 顶部 Header -->
+  <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-6">
+          <h1 class="text-lg font-bold text-gray-800">
+            <span class="text-blue-500">📋</span> <span id="header-title">风险点库管理</span>
+          </h1>
+          <nav class="flex items-center gap-1">
+            <a href="#" id="tab-list" class="px-4 py-3 text-sm font-medium border-b-2 border-blue-500 text-blue-600">风险点库列表</a>
+            <a href="#" id="tab-detail" class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">库详情配置</a>
+            <a href="#" id="tab-rule-config" class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">规则配置页</a>
+          </nav>
+        </div>
+        <div class="text-xs text-gray-400">合同智能审查系统 v1.0 原型</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- 视图1：风险点库列表 -->
+    <div id="view-library-list"></div>
+
+    <!-- 视图2：库详情 -->
+    <div id="view-library-detail" class="hidden"></div>
+
+    <!-- 视图3：规则配置页 -->
+    <div id="view-rule-config" class="hidden"></div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="text-center py-4 text-xs text-gray-400 border-t border-gray-200 mt-8">
+    合同智能审查系统 - 风险点库原型 &copy; 2026
+  </footer>
+
+  <!-- JS 脚本（按依赖顺序加载） -->
+  <script src="js/models.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/libraryList.js"></script>
+  <script src="js/libraryDetail.js"></script>
+  <script src="js/ruleConfig.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

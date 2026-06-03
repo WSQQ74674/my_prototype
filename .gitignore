@@ -1,0 +1,8 @@
+# 系统缓存文件
+.DS_Store
+Thumbs.db
+# VSCode配置
+.vscode/
+# 临时文档（可选，docx/png原型图如需保存就删掉下面两行）
+# *.docx
+# *.png
