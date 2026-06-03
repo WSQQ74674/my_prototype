@@ -117,7 +117,6 @@ function buildNavTreeItem(clause) {
         </button>
         <div class="flex-1 min-w-0">
           <div class="text-sm text-gray-800 truncate">${escapeHtml(clause.title)}</div>
-          <div class="text-xs text-gray-400">${points.length} 个审查点</div>
         </div>
       </div>
       ${isExpanded ? `
@@ -144,13 +143,19 @@ function buildClauseSection(clause) {
   return `
     <div class="clause-section bg-white rounded-xl shadow-sm border border-gray-200 mb-4" id="clause-${clause.id}">
       <!-- 条款标题区 -->
-      <div class="flex items-center gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
-        <span class="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">条款名称</span>
-        <input type="text" class="clause-title-input form-input flex-1 px-3 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm font-semibold text-gray-800" value="${escapeHtml(clause.title)}" data-clause-id="${clause.id}" placeholder="条款名称" />
-        <button class="btn-del-clause text-red-400 hover:text-red-600 flex-shrink-0 text-xs flex items-center gap-1" data-clause-id="${clause.id}">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          删除条款
-        </button>
+      <div class="px-5 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl space-y-2">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">条款名称</span>
+          <input type="text" class="clause-title-input form-input flex-1 px-3 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm font-semibold text-gray-800" value="${escapeHtml(clause.title)}" data-clause-id="${clause.id}" placeholder="条款名称" />
+          <button class="btn-del-clause text-red-400 hover:text-red-600 flex-shrink-0 text-xs flex items-center gap-1" data-clause-id="${clause.id}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            删除条款
+          </button>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">条款说明</span>
+          <input type="text" class="clause-desc-input form-input flex-1 px-3 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm text-gray-600" value="${escapeHtml(clause.description || '')}" data-clause-id="${clause.id}" placeholder="条款说明（非必填）" maxlength="200" />
+        </div>
       </div>
       <!-- 审查点卡片列表 -->
       <div class="p-4 space-y-4">
@@ -508,12 +513,21 @@ function saveAllChanges() {
   const lib = getLibraryById(currentLibraryId);
   if (!lib || !lib.clauses) return;
 
-  // 保存所有条款标题
+  // 保存所有条款标题和说明
   document.querySelectorAll('.clause-title-input').forEach(input => {
     const clauseId = input.dataset.clauseId;
     const clause = lib.clauses.find(c => c.id === clauseId);
     if (clause && input.value.trim() && input.value.trim() !== clause.title) {
       updateClause(currentLibraryId, clauseId, { title: input.value.trim() });
+    }
+  });
+  // 保存所有条款说明
+  document.querySelectorAll('.clause-desc-input').forEach(input => {
+    const clauseId = input.dataset.clauseId;
+    const clause = lib.clauses.find(c => c.id === clauseId);
+    const newDesc = input.value.trim();
+    if (clause && newDesc !== (clause.description || '')) {
+      updateClause(currentLibraryId, clauseId, { description: newDesc });
     }
   });
 
@@ -710,16 +724,23 @@ function openUpdateRulesModal(pointId) {
 function openAddClauseModal() {
   showModal({
     title: '添加审查条款',
-    content: `<div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">条款名称 <span class="text-red-500">*</span></label>
-      <input type="text" id="clause-title-input" class="form-input w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="请输入条款名称" maxlength="100" />
+    content: `<div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">条款名称 <span class="text-red-500">*</span></label>
+        <input type="text" id="clause-title-input" class="form-input w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="请输入条款名称" maxlength="100" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">条款说明</label>
+        <input type="text" id="clause-desc-input" class="form-input w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="条款说明（非必填）" maxlength="200" />
+      </div>
     </div>`,
     size: 'sm',
     confirmText: '保存',
     onConfirm: (overlay) => {
       const title = overlay.querySelector('#clause-title-input').value.trim();
       if (!title) { showToast('请输入条款名称', 'warning'); return false; }
-      addClause(currentLibraryId, { title });
+      const desc = overlay.querySelector('#clause-desc-input').value.trim();
+      addClause(currentLibraryId, { title, description: desc });
       const lib = getLibraryById(currentLibraryId);
       if (lib && lib.clauses && lib.clauses.length > 0) {
         currentClauseId = lib.clauses[lib.clauses.length - 1].id;

@@ -56,6 +56,7 @@ function createReviewClause(overrides = {}) {
     id: generateId('clause'),
     libraryId: '',
     title: '',
+    description: '',
     order: 0,
     reviewPoints: [],   // ReviewPoint 数组
     createdAt: now(),
