@@ -4,6 +4,7 @@
  */
 
 let currentFilter = { keyword: '', customerTag: '', tag: '', searchCreator: '' };
+let selectedLibraryId = null;
 
 function initLibraryList() {
   const container = document.getElementById('view-library-list');
@@ -53,6 +54,7 @@ function renderLibraryList() {
         <table class="risk-table w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-left text-gray-600">
+              <th class="px-4 py-3 font-medium w-10"></th>
               <th class="px-4 py-3 font-medium">名称</th>
               <th class="px-4 py-3 font-medium">标签</th>
               <th class="px-4 py-3 font-medium">客户标签</th>
@@ -66,7 +68,7 @@ function renderLibraryList() {
           <tbody>
             ${filtered.length === 0 ? `
               <tr>
-                <td colspan="8" class="px-4 py-12 text-center text-gray-400">
+                <td colspan="9" class="px-4 py-12 text-center text-gray-400">
                   <div class="text-4xl mb-2">📋</div>
                   <p>暂无风险点库</p>
                   <p class="text-xs mt-1">点击"新建风险点库"开始创建</p>
@@ -75,8 +77,12 @@ function renderLibraryList() {
             ` : filtered.map(lib => {
               const clauseCount = lib.clauses ? lib.clauses.length : 0;
               const pointCount = lib.clauses ? lib.clauses.reduce((sum, c) => sum + (c.reviewPoints ? c.reviewPoints.length : 0), 0) : 0;
+              const isSelected = selectedLibraryId === lib.id;
               return `
-              <tr class="border-t border-gray-100">
+              <tr class="border-t border-gray-100 ${isSelected ? 'bg-blue-50' : ''}">
+                <td class="px-4 py-3">
+                  <input type="radio" class="rb-row text-blue-500 focus:ring-blue-400" data-id="${lib.id}" ${isSelected ? 'checked' : ''} />
+                </td>
                 <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(lib.name)}</td>
                 <td class="px-4 py-3">${lib.tag === '客户' ? '<span class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-700">客户</span>' : '<span class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-700">通用</span>'}</td>
                 <td class="px-4 py-3">${lib.tag === '通用' ? '<span class="text-gray-400 text-sm">-</span>' : (lib.customerTag ? `<span class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">${escapeHtml(lib.customerTag)}</span>` : '<span class="text-gray-400 text-sm">-</span>')}</td>
@@ -126,36 +132,48 @@ function filterLibraries(libraries) {
 }
 
 function bindSearchEvents() {
+  const container = document.getElementById('view-library-list');
+  if (!container) return;
+
   let searchTimer;
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
+  // 搜索输入 — 事件委托
+  container.addEventListener('input', (e) => {
+    if (e.target.id === 'search-input') {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
         currentFilter.keyword = e.target.value;
         renderLibraryList();
       }, 300);
-    });
-  }
+    }
+  });
 
-  const customerTagSelect = document.getElementById('filter-customer-tag');
-  if (customerTagSelect) {
-    customerTagSelect.addEventListener('change', (e) => {
+  // 标签、客户标签下拉 — 事件委托
+  container.addEventListener('change', (e) => {
+    if (e.target.id === 'filter-customer-tag') {
       currentFilter.customerTag = e.target.value;
       renderLibraryList();
-    });
-  }
-
-  const tagSelect = document.getElementById('filter-tag');
-  if (tagSelect) {
-    tagSelect.addEventListener('change', (e) => {
+    }
+    if (e.target.id === 'filter-tag') {
       currentFilter.tag = e.target.value;
       renderLibraryList();
-    });
-  }
+    }
+  });
 }
 
 function bindListEvents() {
+  // 单选按钮 — 完全手动控制，阻止浏览器原生 radio 行为
+  document.querySelectorAll('.rb-row').forEach(rb => {
+    rb.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (this.dataset.id === selectedLibraryId) {
+        selectedLibraryId = null;
+      } else {
+        selectedLibraryId = this.dataset.id;
+      }
+      renderLibraryList();
+    });
+  });
+
   // 新建风险点库
   const btnNew = document.getElementById('btn-new-library');
   if (btnNew) {

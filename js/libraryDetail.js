@@ -62,17 +62,17 @@ function renderLibraryDetail() {
     </div>
 
     <!-- 左右双栏 -->
-    <div class="detail-layout flex gap-4">
+    <div class="detail-layout flex gap-4" style="max-height: calc(100vh - 220px);">
       <!-- 左侧：定位导航树 -->
-      <div class="detail-left bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style="width: 280px; min-width: 220px; flex-shrink: 0;">
-        <div class="p-3 border-b border-gray-100 space-y-2">
+      <div class="detail-left bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden" style="width: 280px; min-width: 220px; flex-shrink: 0;">
+        <div class="p-3 border-b border-gray-100 space-y-2 flex-shrink-0">
           <div class="relative">
             <input type="text" id="clause-search-input" class="form-input w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs" placeholder="搜索条款/审查点..." value="${escapeHtml(clauseSearchKeyword)}" />
             <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
           <button id="btn-add-clause" class="w-full px-2 py-1.5 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors">+ 添加条款</button>
         </div>
-        <div class="overflow-y-auto" style="max-height: 60vh;">
+        <div class="overflow-y-auto flex-1">
           ${allClauses.length === 0 ? `
             <div class="p-8 text-center text-gray-400 text-sm"><p>暂无条款</p></div>
           ` : allClauses.map(clause => buildNavTreeItem(clause)).join('')}
@@ -81,7 +81,7 @@ function renderLibraryDetail() {
 
       <!-- 右侧：条款和审查点 + 底栏 -->
       <div class="flex-1 flex flex-col" style="min-width: 0;">
-        <div class="flex-1 overflow-y-auto" style="max-height: 55vh;" id="content-scroll">
+        <div class="overflow-y-auto flex-1" id="content-scroll">
           ${displayClauses.length === 0 ? `
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center text-gray-400">
               <div class="text-5xl mb-3">📋</div>
@@ -234,6 +234,29 @@ function buildPointCard(rp, index) {
           <input type="text" class="point-boundary form-input flex-1 px-2 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm" value="${escapeHtml(rp.boundaryDescription || '')}" placeholder="300字上限" maxlength="300" />
         </div>
         <div class="point-field-row">
+          <label class="point-field-label">法律依据</label>
+          <div class="flex-1 space-y-2">
+            <!-- 第一行：类型 + 文件 -->
+            <div class="flex items-center gap-2">
+              <select class="legal-basis-type form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="min-width:120px">
+                <option value="">选择类型</option>
+                ${LEGAL_BASIS_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+              <select class="legal-basis-doc form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="min-width:180px">
+                <option value="">选择法律依据文件</option>
+                ${LEGAL_DOCUMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
+              </select>
+            </div>
+            <!-- 第二行：条款 + 添加关联按钮 -->
+            <div class="flex items-center gap-2" data-point-id="${rp.id}">
+              <select class="legal-basis-provision form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="width:480px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="">
+                <option value="">选择法律依据</option>
+              </select>
+              <button class="btn-add-legal-basis px-3 py-1.5 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors whitespace-nowrap flex-shrink-0">添加关联</button>
+            </div>
+          </div>
+        </div>
+        <div class="point-field-row">
           <label class="point-field-label">合同类型标签</label>
           <div class="point-contract-tags flex flex-wrap gap-1.5" data-point-id="${rp.id}">
             ${renderSingleSelectTags(CONTRACT_TAGS, contractTag, 'contract')}
@@ -254,9 +277,17 @@ function buildPointCard(rp, index) {
 
 /** 渲染单选标签（同一组内只能选一个） */
 function renderSingleSelectTags(allOptions, selectedTag, prefix) {
-  return allOptions.map(tag => `
+  let html = allOptions.map(tag => `
     <button type="button" class="single-tag-chip px-1.5 py-0.5 text-xs rounded border transition-colors whitespace-nowrap ${tag === selectedTag ? 'single-tag-active bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-400'}" data-tag="${tag}" data-prefix="${prefix}">${tag}</button>
   `).join('');
+  // 自定义标签（不在预设选项中）
+  if (selectedTag && !allOptions.includes(selectedTag)) {
+    html += `<span class="custom-tag-wrapper inline-flex items-center gap-0.5">
+      <button type="button" class="single-tag-chip single-tag-active px-1.5 py-0.5 text-xs rounded border bg-blue-500 text-white border-blue-500 whitespace-nowrap custom-tag-chip" data-tag="${selectedTag}" data-prefix="${prefix}" data-custom="true">${escapeHtml(selectedTag)}</button>
+      <button type="button" class="custom-tag-del text-gray-400 hover:text-red-500 leading-none text-xs" title="删除自定义标签">&times;</button>
+    </span>`;
+  }
+  return html;
 }
 
 // === 事件绑定 ===
@@ -296,6 +327,26 @@ function bindDetailEvents() {
 
   // 发布
   document.getElementById('btn-publish')?.addEventListener('click', async () => {
+    // 检查所有风险点的必填字段（从 DOM 读取当前编辑值）
+    const cards = document.querySelectorAll('.point-card');
+    for (const card of cards) {
+      const nameEl = card.querySelector('.point-name');
+      const typeRadio = card.querySelector('.point-type-radio:checked');
+      const suggestEl = card.querySelector('.point-suggestion');
+
+      if (!nameEl || !nameEl.value.trim()) {
+        showToast('存在风险点名称为空（必填）', 'warning');
+        return;
+      }
+      if (!typeRadio || !typeRadio.value) {
+        showToast(`风险点「${nameEl.value.trim()}」未选择风险点类型（必填）`, 'warning');
+        return;
+      }
+      if (!suggestEl || !suggestEl.value.trim()) {
+        showToast(`风险点「${nameEl.value.trim()}」审查综述为空（必填）`, 'warning');
+        return;
+      }
+    }
     const confirmed = await showConfirm('确定发布该风险点库吗？发布后将锁定当前配置。', '发布确认');
     if (confirmed) { showToast('风险点库已发布（原型演示）', 'success'); }
   });
@@ -352,13 +403,24 @@ function bindDetailEvents() {
     el.addEventListener('click', (e) => {
       const clauseId = el.dataset.clauseId;
       const pointId = el.dataset.pointId;
-      // 先切换到该条款，再定位审查点
+      const sameClause = (clauseId === activeClauseFilter);
+      if (sameClause) {
+        // 同条款：不重渲染，直接平滑滚动到目标
+        const target = document.getElementById('point-' + pointId);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('ring-2', 'ring-blue-400');
+          setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 1500);
+        }
+        return;
+      }
+      // 跨条款：切换筛选 + 重渲染，用 auto 瞬时定位
       activeClauseFilter = clauseId;
       renderLibraryDetail();
       setTimeout(() => {
         const target = document.getElementById('point-' + pointId);
         if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.scrollIntoView({ behavior: 'auto', block: 'center' });
           target.classList.add('ring-2', 'ring-blue-400');
           setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 1500);
         }
@@ -406,7 +468,7 @@ function bindDetailEvents() {
       setTimeout(() => {
         const target = document.getElementById('point-' + currentPointId);
         if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.scrollIntoView({ behavior: 'auto', block: 'center' });
           target.classList.add('ring-2', 'ring-blue-400');
           setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000);
         }
@@ -434,40 +496,57 @@ function bindDetailEvents() {
     });
   });
 
-  // 自定义标签输入
+  // 自定义标签：Enter / blur 创建选中 chip；点击 chip 回退为输入框
   document.querySelectorAll('.tag-custom-inline').forEach(input => {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const val = input.value.trim();
-        if (val) {
-          const container = input.parentElement;
-          const existing = container.querySelector(`.single-tag-chip[data-tag="${val}"]`);
-          if (!existing) {
-            // 取消其他选中
-            container.querySelectorAll('.single-tag-chip').forEach(c => {
-              c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
-              c.classList.add('bg-white', 'text-gray-500', 'border-gray-200');
-            });
-            // 新建标签并选中
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'single-tag-chip single-tag-active px-1.5 py-0.5 text-xs rounded border bg-blue-500 text-white border-blue-500 whitespace-nowrap';
-            chip.dataset.tag = val;
-            chip.textContent = val;
-            chip.addEventListener('click', () => {
-              const p = chip.parentElement;
-              p.querySelectorAll('.single-tag-chip').forEach(c => {
-                c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
-                c.classList.add('bg-white', 'text-gray-500', 'border-gray-200');
-              });
-              chip.classList.add('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
-              chip.classList.remove('bg-white', 'text-gray-500', 'border-gray-200');
-            });
-            input.before(chip);
-          }
-        }
-        input.value = '';
+        createCustomTagFromInput(input);
+      }
+    });
+    input.addEventListener('blur', () => {
+      // 延迟执行，让点击 chip 等操作先触发
+      setTimeout(() => {
+        if (input.value.trim()) createCustomTagFromInput(input);
+      }, 100);
+    });
+  });
+
+  // 点击自定义 chip 回退为输入框
+  document.querySelectorAll('.custom-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const wrapper = chip.parentElement; // .custom-tag-wrapper
+      const container = wrapper.parentElement;
+      const prefix = chip.dataset.prefix;
+      const val = chip.dataset.tag;
+      // 替换为输入框并填入原值
+      const newInput = document.createElement('input');
+      newInput.type = 'text';
+      newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded';
+      newInput.value = val;
+      newInput.style.width = Math.max(val.length * 14 + 16, 60) + 'px';
+      wrapper.replaceWith(newInput);
+      newInput.focus();
+      newInput.select();
+      bindCustomTagInput(newInput);
+    });
+  });
+
+  // 删除自定义 chip 的 × 按钮
+  document.querySelectorAll('.custom-tag-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wrapper = btn.parentElement;
+      const container = wrapper.parentElement;
+      // 回退到空输入框
+      wrapper.remove();
+      if (!container.querySelector('.tag-custom-inline')) {
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded w-20';
+        newInput.placeholder = '+ 自定义';
+        container.appendChild(newInput);
+        bindCustomTagInput(newInput);
       }
     });
   });
@@ -506,6 +585,91 @@ function bindDetailEvents() {
       }
     });
   });
+
+  // 法律依据：选择文件后联动加载条款
+  document.querySelectorAll('.legal-basis-doc').forEach(sel => {
+    sel.addEventListener('change', function() {
+      const card = this.closest('.point-card');
+      const provisionSel = card.querySelector('.legal-basis-provision');
+      const docName = this.value;
+      if (provisionSel) {
+        const provisions = LEGAL_PROVISIONS[docName] || [];
+        provisionSel.innerHTML = '<option value="">选择法律依据</option>'
+          + provisions.map(p => `<option value="${escapeHtml(p)}" title="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+        provisionSel.title = '';
+      }
+    });
+  });
+
+  // 法律依据条款选择后更新 title 用于悬浮提示
+  document.querySelectorAll('.legal-basis-provision').forEach(sel => {
+    sel.addEventListener('change', function() {
+      this.title = this.options[this.selectedIndex] ? this.options[this.selectedIndex].title : '';
+    });
+  });
+
+  
+  /** 辅助：给单个输入框绑定自定义标签创建事件 */
+  function bindCustomTagInput(input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        createCustomTagFromInput(input);
+      }
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (input.value.trim()) createCustomTagFromInput(input);
+      }, 100);
+    });
+  }
+
+  /** 从输入框创建自定义标签 chip */
+  function createCustomTagFromInput(input) {
+    const val = input.value.trim();
+    if (!val) return;
+    const container = input.parentElement;
+    // 选中当前值，取消其他
+    container.querySelectorAll('.single-tag-chip').forEach(c => {
+      c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
+      c.classList.add('bg-white', 'text-gray-500', 'border-gray-200');
+    });
+    // 替换输入框为 chip
+    const wrapper = document.createElement('span');
+    wrapper.className = 'custom-tag-wrapper inline-flex items-center gap-0.5';
+    wrapper.innerHTML = `<button type="button" class="single-tag-chip single-tag-active px-1.5 py-0.5 text-xs rounded border bg-blue-500 text-white border-blue-500 whitespace-nowrap custom-tag-chip" data-tag="${escapeHtml(val)}" data-prefix="${input.previousElementSibling ? (input.previousElementSibling.dataset ? input.previousElementSibling.dataset.prefix || '' : '') : ''}" data-custom="true">${escapeHtml(val)}</button>
+      <button type="button" class="custom-tag-del text-gray-400 hover:text-red-500 leading-none text-xs" title="删除自定义标签">&times;</button>`;
+    input.replaceWith(wrapper);
+    // 绑定新 chip 的事件
+    wrapper.querySelector('.custom-tag-chip').addEventListener('click', () => {
+      const w = wrapper;
+      const cont = w.parentElement;
+      const val2 = w.querySelector('.custom-tag-chip').dataset.tag;
+      const newInput = document.createElement('input');
+      newInput.type = 'text';
+      newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded';
+      newInput.value = val2;
+      newInput.style.width = Math.max(val2.length * 14 + 16, 60) + 'px';
+      w.replaceWith(newInput);
+      newInput.focus();
+      newInput.select();
+      bindCustomTagInput(newInput);
+    });
+    wrapper.querySelector('.custom-tag-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      wrapper.remove();
+      const cont = container;
+      if (!cont.querySelector('.tag-custom-inline')) {
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded w-20';
+        newInput.placeholder = '+ 自定义';
+        cont.appendChild(newInput);
+        bindCustomTagInput(newInput);
+      }
+    });
+    // 保存逻辑能读到 .single-tag-active 的 data-tag
+  }
 }
 
 /** 保存所有编辑 */
@@ -712,7 +876,21 @@ function openUpdateRulesModal(pointId) {
     confirmText: '确认更新',
     danger: true,
     onConfirm: () => {
-      showToast(`风险点「${rp.name}」已更新至 ${ruleRefs.length} 条审查规则`, 'success');
+      // 校验必填字段：从 DOM 中读取当前编辑值
+      const card = document.getElementById('point-' + pointId);
+      const nameEl = card ? card.querySelector('.point-name') : null;
+      const typeRadio = card ? card.querySelector('.point-type-radio:checked') : null;
+      const suggestEl = card ? card.querySelector('.point-suggestion') : null;
+
+      const name = nameEl ? nameEl.value.trim() : (rp.name || '');
+      const type = typeRadio ? typeRadio.value : rp.type;
+      const reviewSuggestion = suggestEl ? suggestEl.value.trim() : (rp.reviewSuggestion || '');
+
+      if (!name) { showToast('请填写风险点名称（必填）', 'warning'); return false; }
+      if (!type) { showToast('请选择风险点类型（必填）', 'warning'); return false; }
+      if (!reviewSuggestion) { showToast('请填写审查综述（必填）', 'warning'); return false; }
+
+      showToast(`风险点「${name}」已更新至 ${ruleRefs.length} 条审查规则`, 'success');
     }
   });
 

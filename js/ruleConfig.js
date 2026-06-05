@@ -152,16 +152,16 @@ function renderRuleConfig() {
       </div>
     </div>
 
-    <div class="detail-layout flex gap-4">
-      <div class="detail-left bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style="width: 280px; min-width: 220px; flex-shrink: 0;">
-        <div class="p-3 border-b border-gray-100 space-y-2">
+    <div class="detail-layout flex gap-4" style="max-height: calc(100vh - 220px);">
+      <div class="detail-left bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden" style="width: 280px; min-width: 220px; flex-shrink: 0;">
+        <div class="p-3 border-b border-gray-100 space-y-2 flex-shrink-0">
           <div class="relative">
             <input type="text" id="rule-search-input" class="form-input w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs" placeholder="搜索条款/审查点..." value="${escapeHtml(ruleSearchKeyword)}" />
             <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
           <button id="btn-rule-add-clause" class="w-full px-2 py-1.5 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors">+ 添加条款</button>
         </div>
-        <div class="overflow-y-auto" style="max-height: 60vh;">
+        <div class="overflow-y-auto flex-1">
           ${allClauses.length === 0 ? `
             <div class="p-8 text-center text-gray-400 text-sm"><p>暂无条款</p></div>
           ` : allClauses.map(clause => buildRuleNavTreeItem(clause)).join('')}
@@ -169,7 +169,7 @@ function renderRuleConfig() {
       </div>
 
       <div class="flex-1 flex flex-col" style="min-width: 0;">
-        <div class="flex-1 overflow-y-auto" style="max-height: 55vh;">
+        <div class="overflow-y-auto flex-1">
           ${displayClauses.length === 0 ? `
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center text-gray-400">
               <div class="text-5xl mb-3">📋</div><p>该条款暂无风险点</p>
@@ -230,6 +230,29 @@ function buildRulePointCard(rp, index) {
         <div class="point-field-row"><label class="point-field-label">通过标准</label><input type="text" class="point-pass form-input flex-1 px-2 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm" value="${escapeHtml(rp.passCriteria || '')}" placeholder="300字上限" maxlength="300" /></div>
         <div class="point-field-row"><label class="point-field-label">风险标准</label><input type="text" class="point-risk form-input flex-1 px-2 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm" value="${escapeHtml(rp.riskCriteria || '')}" placeholder="300字上限" maxlength="300" /></div>
         <div class="point-field-row"><label class="point-field-label">边界案例</label><input type="text" class="point-boundary form-input flex-1 px-2 py-1.5 bg-white border border-gray-200 focus:border-blue-400 rounded text-sm" value="${escapeHtml(rp.boundaryDescription || '')}" placeholder="300字上限" maxlength="300" /></div>
+        <div class="point-field-row">
+          <label class="point-field-label">法律依据</label>
+          <div class="flex-1 space-y-2">
+            <!-- 第一行：类型 + 文件 -->
+            <div class="flex items-center gap-2">
+              <select class="legal-basis-type form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="min-width:120px">
+                <option value="">选择类型</option>
+                ${LEGAL_BASIS_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+              <select class="legal-basis-doc form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="min-width:180px">
+                <option value="">选择法律依据文件</option>
+                ${LEGAL_DOCUMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
+              </select>
+            </div>
+            <!-- 第二行：条款 + 添加关联按钮 -->
+            <div class="flex items-center gap-2">
+              <select class="legal-basis-provision form-select px-2 py-1.5 border border-gray-200 rounded text-sm bg-white" style="width:480px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="">
+                <option value="">选择法律依据</option>
+              </select>
+              <button class="btn-add-legal-basis px-3 py-1.5 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors whitespace-nowrap flex-shrink-0">添加关联</button>
+            </div>
+          </div>
+        </div>
         <div class="point-field-row">
           <label class="point-field-label">合同类型标签</label>
           <div class="point-contract-tags flex flex-wrap gap-1.5">${renderSingleSelectTags(CONTRACT_TAGS, contractTag, 'contract')}<input type="text" class="tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded w-20" placeholder="+ 自定义" /></div>
@@ -345,12 +368,25 @@ function bindRuleConfigEvents() {
   // 树：审查点定位
   document.querySelectorAll('[data-rc-action="nav-to-point"]').forEach(el => {
     el.addEventListener('click', () => {
-      ruleActiveClauseFilter = el.dataset.rcClauseId;
+      const clauseId = el.dataset.rcClauseId;
       const pointId = el.dataset.rcPointId;
+      const sameClause = (clauseId === ruleActiveClauseFilter);
+      if (sameClause) {
+        // 同条款：不重渲染，直接平滑滚动
+        const target = document.getElementById('point-' + pointId);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('ring-2', 'ring-blue-400');
+          setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 1500);
+        }
+        return;
+      }
+      // 跨条款：切换筛选 + 重渲染，auto 瞬时定位
+      ruleActiveClauseFilter = clauseId;
       renderRuleConfig();
       setTimeout(() => {
         const target = document.getElementById('point-' + pointId);
-        if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('ring-2', 'ring-blue-400'); setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 1500); }
+        if (target) { target.scrollIntoView({ behavior: 'auto', block: 'center' }); target.classList.add('ring-2', 'ring-blue-400'); setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 1500); }
       }, 150);
     });
   });
@@ -400,33 +436,53 @@ function bindRuleConfigEvents() {
     });
   });
 
-  // 自定义标签
+  // 自定义标签：Enter / blur 创建选中 chip；点击 chip 回退为输入框
   document.querySelectorAll('.tag-custom-inline').forEach(input => {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const val = input.value.trim();
-        if (val) {
-          const container = input.parentElement;
-          if (!container.querySelector('.single-tag-chip[data-tag="' + val + '"]')) {
-            container.querySelectorAll('.single-tag-chip').forEach(c => {
-              c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
-              c.classList.add('bg-white', 'text-gray-500', 'border-gray-200');
-            });
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'single-tag-chip single-tag-active px-1.5 py-0.5 text-xs rounded border bg-blue-500 text-white border-blue-500 whitespace-nowrap';
-            chip.dataset.tag = val; chip.textContent = val;
-            chip.addEventListener('click', () => {
-              const p = chip.parentElement;
-              p.querySelectorAll('.single-tag-chip').forEach(c => { c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500'); c.classList.add('bg-white', 'text-gray-500', 'border-gray-200'); });
-              chip.classList.add('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
-              chip.classList.remove('bg-white', 'text-gray-500', 'border-gray-200');
-            });
-            input.before(chip);
-          }
-        }
-        input.value = '';
+        createCustomTagFromInput(input);
+      }
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (input.value.trim()) createCustomTagFromInput(input);
+      }, 100);
+    });
+  });
+
+  // 点击自定义 chip 回退为输入框
+  document.querySelectorAll('.custom-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const wrapper = chip.parentElement;
+      const container = wrapper.parentElement;
+      const val = chip.dataset.tag;
+      const newInput = document.createElement('input');
+      newInput.type = 'text';
+      newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded';
+      newInput.value = val;
+      newInput.style.width = Math.max(val.length * 14 + 16, 60) + 'px';
+      wrapper.replaceWith(newInput);
+      newInput.focus();
+      newInput.select();
+      bindCustomTagInput(newInput);
+    });
+  });
+
+  // 删除自定义 chip 的 × 按钮
+  document.querySelectorAll('.custom-tag-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wrapper = btn.parentElement;
+      const container = wrapper.parentElement;
+      wrapper.remove();
+      if (!container.querySelector('.tag-custom-inline')) {
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded w-20';
+        newInput.placeholder = '+ 自定义';
+        container.appendChild(newInput);
+        bindCustomTagInput(newInput);
       }
     });
   });
@@ -455,6 +511,84 @@ function bindRuleConfigEvents() {
       openAddToRiskLibModal(btn.dataset.pointId);
     });
   });
+
+  // 法律依据：选择文件后联动加载条款
+  document.querySelectorAll('.legal-basis-doc').forEach(sel => {
+    sel.addEventListener('change', function() {
+      const card = this.closest('.point-card');
+      const provisionSel = card.querySelector('.legal-basis-provision');
+      const docName = this.value;
+      if (provisionSel) {
+        const provisions = LEGAL_PROVISIONS[docName] || [];
+        provisionSel.innerHTML = '<option value="">选择法律依据</option>'
+          + provisions.map(p => `<option value="${escapeHtml(p)}" title="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+        provisionSel.title = '';
+      }
+    });
+  });
+
+  // 法律依据条款选择后更新 title 用于悬浮提示
+  document.querySelectorAll('.legal-basis-provision').forEach(sel => {
+    sel.addEventListener('change', function() {
+      this.title = this.options[this.selectedIndex] ? this.options[this.selectedIndex].title : '';
+    });
+  });
+
+  
+  /** 辅助：给单个输入框绑定自定义标签创建事件 */
+  function bindCustomTagInput(input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        createCustomTagFromInput(input);
+      }
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (input.value.trim()) createCustomTagFromInput(input);
+      }, 100);
+    });
+  }
+
+  /** 从输入框创建自定义标签 chip */
+  function createCustomTagFromInput(input) {
+    const val = input.value.trim();
+    if (!val) return;
+    const container = input.parentElement;
+    container.querySelectorAll('.single-tag-chip').forEach(c => {
+      c.classList.remove('single-tag-active', 'bg-blue-500', 'text-white', 'border-blue-500');
+      c.classList.add('bg-white', 'text-gray-500', 'border-gray-200');
+    });
+    const wrapper = document.createElement('span');
+    wrapper.className = 'custom-tag-wrapper inline-flex items-center gap-0.5';
+    wrapper.innerHTML = '<button type="button" class="single-tag-chip single-tag-active px-1.5 py-0.5 text-xs rounded border bg-blue-500 text-white border-blue-500 whitespace-nowrap custom-tag-chip" data-tag="' + escapeHtml(val) + '" data-custom="true">' + escapeHtml(val) + '</button>'
+      + '<button type="button" class="custom-tag-del text-gray-400 hover:text-red-500 leading-none text-xs" title="删除自定义标签">&times;</button>';
+    input.replaceWith(wrapper);
+    wrapper.querySelector('.custom-tag-chip').addEventListener('click', function () {
+      const val2 = wrapper.querySelector('.custom-tag-chip').dataset.tag;
+      const newInput = document.createElement('input');
+      newInput.type = 'text';
+      newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded';
+      newInput.value = val2;
+      newInput.style.width = Math.max(val2.length * 14 + 16, 60) + 'px';
+      wrapper.replaceWith(newInput);
+      newInput.focus();
+      newInput.select();
+      bindCustomTagInput(newInput);
+    });
+    wrapper.querySelector('.custom-tag-del').addEventListener('click', function (e) {
+      e.stopPropagation();
+      wrapper.remove();
+      if (!container.querySelector('.tag-custom-inline')) {
+        var newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.className = 'tag-custom-inline px-2 py-0.5 text-xs border border-dashed border-gray-300 rounded w-20';
+        newInput.placeholder = '+ 自定义';
+        container.appendChild(newInput);
+        bindCustomTagInput(newInput);
+      }
+    });
+  }
 }
 
 // === 添加风险点选择弹窗 ===
@@ -462,19 +596,21 @@ function bindRuleConfigEvents() {
 function openAddPointChoiceModal() {
   let mode = null; // 'create' | 'ref'
   let refSearchKeyword = '';
-  let refChecked = {}; // { pointId: true }
+  let refSelectedIds = new Set(); // 多选：Set of pointId
 
   function buildChoiceContent() {
     if (mode === null) {
       return `
-        <div class="text-center py-4 space-y-3">
+        <div class="text-center py-2">
           <p class="text-sm text-gray-600 mb-4">请选择添加风险点的方式：</p>
-          <button id="btn-choice-create" class="w-full px-4 py-3 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors">创建风险点</button>
-          <button id="btn-choice-ref" class="w-full px-4 py-3 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">引用风险点</button>
+          <div class="flex items-center justify-center gap-3">
+            <button id="btn-choice-create" class="px-6 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors">创建风险点</button>
+            <button id="btn-choice-ref" class="px-6 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">引用风险点</button>
+          </div>
         </div>`;
     }
 
-    // mode === 'ref'：展示风险点库树结构
+    // mode === 'ref'：展示风险点库三级树结构（库→条款→风险点），均支持复选
     const libraries = getLibraries();
     const kw = refSearchKeyword.toLowerCase();
 
@@ -488,32 +624,59 @@ function openAddPointChoiceModal() {
         let libHtml = '';
         (lib.clauses || []).sort((a, b) => a.order - b.order).forEach(clause => {
           let clauseHtml = '';
+          let clauseHasMatch = false;
           (clause.reviewPoints || []).forEach(rp => {
-            if (kw && !rp.name.toLowerCase().includes(kw)) return;
+            if (kw) {
+              const matchName = rp.name.toLowerCase().includes(kw);
+              const matchTags = (rp.contractTags || []).some(t => t.toLowerCase().includes(kw));
+              if (!matchName && !matchTags) return;
+            }
             hasMatch = true;
-            const checked = refChecked[rp.id] ? 'checked' : '';
+            clauseHasMatch = true;
+            const checked = refSelectedIds.has(rp.id) ? 'checked' : '';
+            const cTags = (rp.contractTags || []).map(t => `<span class="inline-block px-1.5 py-0.5 text-xs rounded bg-orange-100 text-orange-600">${escapeHtml(t)}</span>`).join('');
+            const sTags = (rp.stanceTags || []).map(t => `<span class="inline-block px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-600">${escapeHtml(t)}</span>`).join('');
             clauseHtml += `
-              <div class="flex items-center pl-10 pr-3 py-1.5 hover:bg-gray-50 text-sm">
-                <input type="checkbox" class="ref-point-checkbox mr-2 rounded text-blue-500" data-point-id="${rp.id}" ${checked} />
+              <div class="ref-point-row flex items-center pl-10 pr-3 py-1.5 hover:bg-gray-50 text-sm">
+                <input type="checkbox" class="ref-cb ref-cb-point mr-2 text-blue-500" data-point-id="${rp.id}" data-clause-id="${clause.id}" data-lib-id="${lib.id}" data-cb-type="point" ${checked} />
                 <span class="text-gray-700">${escapeHtml(rp.name)}</span>
-                <span class="text-xs text-gray-400 ml-2">${escapeHtml(rp.riskLevel)}</span>
+                <span class="flex items-center gap-1 ml-2">${cTags}${sTags}</span>
               </div>`;
           });
-          if (clauseHtml) {
+          if (clauseHasMatch || !kw) {
+            // 计算条款级复选框状态（在渲染时做初始状态；事件中会动态更新）
+            const points = clause.reviewPoints || [];
+            const visiblePoints = kw
+              ? points.filter(rp => rp.name.toLowerCase().includes(kw) || (rp.contractTags || []).some(t => t.toLowerCase().includes(kw)))
+              : points;
+            const allChecked = visiblePoints.length > 0 && visiblePoints.every(rp => refSelectedIds.has(rp.id));
+            const someChecked = visiblePoints.some(rp => refSelectedIds.has(rp.id));
+            const clauseChecked = allChecked ? 'checked' : '';
             libHtml += `
               <div class="ref-clause-header flex items-center px-3 py-1.5 text-xs text-gray-500">
-                <svg class="w-3 h-3 text-gray-300 mr-1.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                <input type="checkbox" class="ref-cb ref-cb-clause mr-1.5 text-blue-500" data-clause-id="${clause.id}" data-lib-id="${lib.id}" data-cb-type="clause" ${clauseChecked} />
                 <span class="truncate">${escapeHtml(clause.title)}</span>
-              </div>${clauseHtml}`;
+              </div>${clauseHtml || '<div class="ref-point-row pl-10 pr-3 py-1.5 text-xs text-gray-400">暂无风险点</div>'}`;
           }
         });
         if (libHtml) {
+          // 计算库级复选框状态
+          const allClauses = lib.clauses || [];
+          const allPoints = allClauses.flatMap(c => c.reviewPoints || []);
+          const visibleAllPoints = kw
+            ? allPoints.filter(rp => rp.name.toLowerCase().includes(kw) || (rp.contractTags || []).some(t => t.toLowerCase().includes(kw)))
+            : allPoints;
+          const allChecked = visibleAllPoints.length > 0 && visibleAllPoints.every(rp => refSelectedIds.has(rp.id));
+          const libChecked = allChecked ? 'checked' : '';
           html += `
-            <div class="ref-lib-header flex items-center px-3 py-2 bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-700">
-              <svg class="w-4 h-4 text-blue-500 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-              <span class="truncate">${escapeHtml(lib.name)}</span>
-              <span class="text-xs text-gray-400 ml-2">${lib.tag || ''}</span>
-            </div>${libHtml}`;
+            <div class="ref-lib-section" data-lib-id="${lib.id}">
+              <div class="ref-lib-header flex items-center px-3 py-2 bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-700">
+                <input type="checkbox" class="ref-cb ref-cb-lib mr-1.5 text-blue-500" data-lib-id="${lib.id}" data-cb-type="lib" ${libChecked} />
+                <svg class="w-4 h-4 text-blue-500 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                <span class="truncate">${escapeHtml(lib.name)}</span>
+                <span class="text-xs text-gray-400 ml-2">${lib.tag || ''}</span>
+              </div>${libHtml}
+            </div>`;
         }
       });
       if (!hasMatch) {
@@ -522,14 +685,14 @@ function openAddPointChoiceModal() {
       return html;
     }
 
-    const checkedCount = Object.keys(refChecked).filter(k => refChecked[k]).length;
+    const pointCount = refSelectedIds.size;
     return `
       <div>
         <button id="btn-ref-back" class="text-xs text-blue-500 hover:text-blue-700 mb-3 flex items-center gap-1">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>返回选择
         </button>
         <div class="relative mb-3">
-          <input type="text" id="ref-search-input" class="form-input w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="搜索风险点..." value="${escapeHtml(refSearchKeyword)}" />
+          <input type="text" id="ref-search-input" class="form-input w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="搜索风险点名称或标签" value="${escapeHtml(refSearchKeyword)}" />
           <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden max-h-80 overflow-y-auto" id="ref-tree-container">
@@ -537,7 +700,7 @@ function openAddPointChoiceModal() {
         </div>
         <div class="flex items-center justify-between mt-3">
           <span class="text-xs text-gray-400">
-            已勾选 <span id="ref-checked-count">${checkedCount}</span> 个风险点
+            已选择 <span id="ref-checked-count">${pointCount}</span> 个风险点
           </span>
           <button id="btn-confirm-ref" class="px-4 py-2 text-sm text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors">确认引用</button>
         </div>
@@ -582,59 +745,56 @@ function openAddPointChoiceModal() {
       });
     }
 
-    // 复选框
-    modal.querySelectorAll('.ref-point-checkbox').forEach(cb => {
-      cb.addEventListener('change', () => {
-        refChecked[cb.dataset.pointId] = cb.checked;
-        const countEl = modal.querySelector('#ref-checked-count');
-        if (countEl) countEl.textContent = Object.keys(refChecked).filter(k => refChecked[k]).length;
-      });
-    });
+    // 三级复选联动
+    bindRefTreeCheckboxEvents(modal, refSelectedIds);
 
     // 确认引用按钮（在弹窗 body 内部）
     modal.querySelector('#btn-confirm-ref')?.addEventListener('click', () => {
-      const selectedIds = Object.keys(refChecked).filter(k => refChecked[k]);
-      if (selectedIds.length === 0) {
-        showToast('请至少勾选一个风险点', 'warning');
+      if (refSelectedIds.size === 0) {
+        showToast('请至少选择一个风险点', 'warning');
         return;
       }
       const libraries = getLibraries();
-      let added = 0;
+      const targetClause = ruleConfigData.clauses.find(c => c.id === ruleActiveClauseFilter);
+      if (!targetClause) {
+        if (!ruleConfigData.clauses) ruleConfigData.clauses = [];
+        const newClause = createReviewClause({ id: ruleActiveClauseFilter, libraryId: ruleConfigData.id, title: '未命名条款', order: ruleConfigData.clauses.length });
+        ruleConfigData.clauses.push(newClause);
+      }
       let firstNewPointId = null;
-      selectedIds.forEach(pointId => {
-        for (const lib of libraries) {
-          for (const clause of (lib.clauses || [])) {
-            const rp = clause.reviewPoints ? clause.reviewPoints.find(p => p.id === pointId) : null;
-            if (rp) {
-              const targetClause = ruleConfigData.clauses.find(c => c.id === ruleActiveClauseFilter);
-              if (targetClause) {
-                const newId = 'rule_rp_' + Date.now() + '_' + added;
+      const addedIds = new Set();
+      for (const lib of libraries) {
+        for (const clause of (lib.clauses || [])) {
+          for (const rp of (clause.reviewPoints || [])) {
+            if (refSelectedIds.has(rp.id) && !addedIds.has(rp.id)) {
+              addedIds.add(rp.id);
+              const tgt = ruleConfigData.clauses.find(c => c.id === ruleActiveClauseFilter);
+              if (tgt) {
+                const newId = 'rule_rp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
                 const newRp = createReviewPoint({
                   ...JSON.parse(JSON.stringify(rp)),
                   id: newId,
                   clauseId: ruleActiveClauseFilter,
                   libraryId: ruleConfigData.id
                 });
-                if (!targetClause.reviewPoints) targetClause.reviewPoints = [];
-                targetClause.reviewPoints.push(newRp);
+                if (!tgt.reviewPoints) tgt.reviewPoints = [];
+                tgt.reviewPoints.push(newRp);
                 if (!firstNewPointId) firstNewPointId = newId;
-                added++;
               }
-              return;
             }
           }
         }
-      });
+      }
       saveRuleConfigData(ruleConfigData);
       closeModal(modal);
-      showToast('已引用 ' + added + ' 个风险点', 'success');
+      showToast('已引用 ' + addedIds.size + ' 个风险点', 'success');
       renderRuleConfig();
       // 定位至第一个新增的风险点
       if (firstNewPointId) {
         setTimeout(() => {
           const target = document.getElementById('point-' + firstNewPointId);
           if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.scrollIntoView({ behavior: 'auto', block: 'center' });
             target.classList.add('ring-2', 'ring-blue-400');
             setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000);
           }
@@ -646,11 +806,80 @@ function openAddPointChoiceModal() {
   const modal = showModal({
     title: '添加风险点',
     content: buildChoiceContent(),
-    size: 'lg',
+    size: 'md',
     showFooter: false
   });
 
   bindChoiceEvents(modal);
+}
+
+/** 引用风险点弹窗中三级复选联动 */
+function bindRefTreeCheckboxEvents(modal, refSelectedIds) {
+  function updateCount() {
+    const countEl = modal.querySelector('#ref-checked-count');
+    if (countEl) countEl.textContent = refSelectedIds.size;
+  }
+
+  function updateParentClause(pointCb) {
+    const clauseId = pointCb.dataset.clauseId;
+    const clauseCb = modal.querySelector('.ref-cb-clause[data-clause-id="' + clauseId + '"]');
+    if (!clauseCb) return;
+    const pointCbs = modal.querySelectorAll('.ref-cb-point[data-clause-id="' + clauseId + '"]');
+    const allChecked = pointCbs.length > 0 && Array.from(pointCbs).every(cb => cb.checked);
+    const noneChecked = Array.from(pointCbs).every(cb => !cb.checked);
+    clauseCb.checked = allChecked;
+    clauseCb.indeterminate = !allChecked && !noneChecked;
+    updateParentLib(clauseCb);
+  }
+
+  function updateParentLib(clauseCb) {
+    const libId = clauseCb.dataset.libId;
+    const libCb = modal.querySelector('.ref-cb-lib[data-lib-id="' + libId + '"]');
+    if (!libCb) return;
+    const clauseCbs = modal.querySelectorAll('.ref-cb-clause[data-lib-id="' + libId + '"]');
+    const allChecked = clauseCbs.length > 0 && Array.from(clauseCbs).every(cb => cb.checked);
+    const noneChecked = Array.from(clauseCbs).every(cb => !cb.checked);
+    libCb.checked = allChecked;
+    libCb.indeterminate = !allChecked && !noneChecked;
+  }
+
+  modal.querySelectorAll('.ref-cb').forEach(cb => {
+    cb.addEventListener('change', function() {
+      const cbType = this.dataset.cbType;
+      const libId = this.dataset.libId;
+      const clauseId = this.dataset.clauseId;
+
+      if (cbType === 'lib') {
+        // 库级：同步所有子条款和风险点
+        const checked = this.checked;
+        modal.querySelectorAll('.ref-cb-clause[data-lib-id="' + libId + '"]').forEach(cc => {
+          cc.checked = checked;
+          cc.indeterminate = false;
+        });
+        modal.querySelectorAll('.ref-cb-point[data-lib-id="' + libId + '"]').forEach(pc => {
+          pc.checked = checked;
+          if (checked) refSelectedIds.add(pc.dataset.pointId);
+          else refSelectedIds.delete(pc.dataset.pointId);
+        });
+      } else if (cbType === 'clause') {
+        // 条款级：同步所有子风险点
+        const checked = this.checked;
+        this.indeterminate = false;
+        modal.querySelectorAll('.ref-cb-point[data-clause-id="' + clauseId + '"]').forEach(pc => {
+          pc.checked = checked;
+          if (checked) refSelectedIds.add(pc.dataset.pointId);
+          else refSelectedIds.delete(pc.dataset.pointId);
+        });
+        updateParentLib(this);
+      } else if (cbType === 'point') {
+        // 风险点级
+        if (this.checked) refSelectedIds.add(this.dataset.pointId);
+        else refSelectedIds.delete(this.dataset.pointId);
+        updateParentClause(this);
+      }
+      updateCount();
+    });
+  });
 }
 
 function createEmptyPoint() {
@@ -665,7 +894,7 @@ function createEmptyPoint() {
   renderRuleConfig();
   setTimeout(() => {
     const target = document.getElementById('point-' + rp.id);
-    if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('ring-2', 'ring-blue-400'); setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000); }
+    if (target) { target.scrollIntoView({ behavior: 'auto', block: 'center' }); target.classList.add('ring-2', 'ring-blue-400'); setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000); }
   }, 150);
 }
 
@@ -683,8 +912,8 @@ function openAddToRiskLibModal(pointId) {
   if (!sourceRp) return;
 
   const libraries = getLibraries();
-  // 勾选状态：{ clauseId: true }
-  const checked = {};
+  // 每个风险点库内单选，但不同库之间可以多选：{ libraryId: clauseId }
+  let selectedClauseIds = {};
   let searchKeyword = '';
 
   function buildTreeContent() {
@@ -700,10 +929,10 @@ function openAddToRiskLibModal(pointId) {
         // 搜索过滤
         if (kw && !clause.title.toLowerCase().includes(kw)) return;
         hasAny = true;
-        const isChecked = checked[clause.id] ? 'checked' : '';
+        const isChecked = selectedClauseIds[lib.id] === clause.id ? 'checked' : '';
         libHtml += `
           <div class="flex items-center px-3 py-2 hover:bg-gray-50 text-sm border-b border-gray-50">
-            <input type="checkbox" class="lib-clause-checkbox mr-2 rounded text-green-500" data-clause-id="${clause.id}" ${isChecked} />
+            <input type="radio" name="lib-clause-radio-${lib.id}" class="lib-clause-radio mr-2 text-green-500" data-clause-id="${clause.id}" data-lib-id="${lib.id}" ${isChecked} />
             <span class="text-gray-700">${escapeHtml(clause.title)}</span>
             <span class="text-xs text-gray-400 ml-2">${(clause.reviewPoints || []).length} 个审查点</span>
           </div>`;
@@ -741,22 +970,40 @@ function openAddToRiskLibModal(pointId) {
       });
     }
 
-    modal.querySelectorAll('.lib-clause-checkbox').forEach(cb => {
+    modal.querySelectorAll('.lib-clause-radio').forEach(cb => {
       cb.addEventListener('change', () => {
-        checked[cb.dataset.clauseId] = cb.checked;
+        const libId = cb.dataset.libId;
+        if (cb.checked) {
+          selectedClauseIds[libId] = cb.dataset.clauseId;
+        } else {
+          delete selectedClauseIds[libId];
+        }
         const countEl = modal.querySelector('#lib-checked-count');
-        if (countEl) countEl.textContent = Object.values(checked).filter(Boolean).length;
+        if (countEl) countEl.textContent = Object.keys(selectedClauseIds).length;
       });
     });
 
     modal.querySelector('#btn-confirm-add-to-lib')?.addEventListener('click', () => {
-      const selectedClauseIds = Object.keys(checked).filter(k => checked[k]);
-      if (selectedClauseIds.length === 0) {
-        showToast('请至少勾选一个条款', 'warning');
+      const clauseIds = Object.values(selectedClauseIds);
+      if (clauseIds.length === 0) {
+        showToast('请至少选择一个条款', 'warning');
+        return;
+      }
+      // 校验必填字段
+      if (!sourceRp.name || !sourceRp.name.trim()) {
+        showToast('请填写风险点名称（必填）', 'warning');
+        return;
+      }
+      if (!sourceRp.type) {
+        showToast('请选择风险点类型（必填）', 'warning');
+        return;
+      }
+      if (!sourceRp.reviewSuggestion || !sourceRp.reviewSuggestion.trim()) {
+        showToast('请填写审查综述（必填）', 'warning');
         return;
       }
       let added = 0;
-      selectedClauseIds.forEach(clauseId => {
+      clauseIds.forEach(clauseId => {
         for (const lib of libraries) {
           const clause = (lib.clauses || []).find(c => c.id === clauseId);
           if (clause) {
@@ -765,7 +1012,7 @@ function openAddToRiskLibModal(pointId) {
               name: sourceRp.name
             });
             added++;
-            return;
+            break;
           }
         }
       });
@@ -774,7 +1021,7 @@ function openAddToRiskLibModal(pointId) {
     });
   }
 
-  const checkedCount = Object.values(checked).filter(Boolean).length;
+  const checkedCount = Object.keys(selectedClauseIds).length;
   const modal = showModal({
     title: '新增至风险点库',
     content: `
@@ -793,7 +1040,7 @@ function openAddToRiskLibModal(pointId) {
         </div>
         <div class="flex items-center justify-between mt-3">
           <span class="text-xs text-gray-400">
-            已勾选 <span id="lib-checked-count">${checkedCount}</span> 个条款
+            已选择 <span id="lib-checked-count">${checkedCount}</span> 个条款
           </span>
           <button id="btn-confirm-add-to-lib" class="px-4 py-2 text-sm text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors">确认新增</button>
         </div>

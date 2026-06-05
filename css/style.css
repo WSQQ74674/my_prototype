@@ -233,7 +233,8 @@
 
   .detail-left {
     width: 100% !important;
-    max-height: 200px;
+    max-height: 250px;
+    flex-shrink: 0 !important;
     border-right: none !important;
     border-bottom: 1px solid #e5e7eb;
   }
@@ -269,4 +270,122 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* === 批量添加页 — 弹窗单选样式 === */
+.batch-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: #4b5563;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.batch-choice:hover {
+  border-color: #93c5fd;
+}
+
+.batch-choice-active {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.batch-choice-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.batch-choice-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.batch-choice-active .batch-choice-dot {
+  border-color: #3b82f6;
+}
+
+.batch-choice-active .batch-choice-dot::after {
+  background: #3b82f6;
+}
+
+/* === 批量添加页 — 三级树结构 === */
+.batch-tree-container {
+  background: #fff;
+}
+
+.batch-lib {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.batch-lib:last-child {
+  border-bottom: none;
+}
+
+.batch-tree-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  transition: background 0.1s ease;
+}
+
+.batch-tree-row:hover {
+  background: #f9fafb;
+}
+
+.batch-tree-lib {
+  background: #fafbfc;
+}
+
+.batch-tree-clause {
+  padding-left: 24px;
+}
+
+.batch-tree-point {
+  padding-left: 42px;
+}
+
+.batch-tree-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-tree-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.batch-tree-name {
+  font-size: 0.8125rem;
+  color: #374151;
+}
+
+.batch-tree-lib .batch-tree-name {
+  font-weight: 600;
+}
+
+.batch-tree-children {
+  /* nested container */
 }
